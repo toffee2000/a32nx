@@ -1,6 +1,7 @@
 class CDUAvailableFlightPlanPage {
     static ShowPage(mcdu) {
         mcdu.clearDisplay();
+        mcdu.page.Current = mcdu.page.AvailableFlightPlanPage;
         let fromTo = "NO ORIGIN/DEST";
         if (mcdu.flightPlanManager.getOrigin()) {
             if (mcdu.flightPlanManager.getDestination()) {
@@ -10,7 +11,7 @@ class CDUAvailableFlightPlanPage {
         mcdu.setTemplate([
             [fromTo],
             [""],
-            ["NONE"],
+            ["NONE[color]green"],
             [""],
             [""],
             [""],
@@ -22,7 +23,9 @@ class CDUAvailableFlightPlanPage {
             [""],
             ["<RETURN"]
         ]);
-        mcdu.onLeftInput[5] = () => { CDUInitPage.ShowPage1(mcdu); };
+        mcdu.onLeftInput[5] = () => {
+            CDUInitPage.ShowPage1(mcdu);
+        };
     }
 }
 //# sourceMappingURL=A320_Neo_CDU_AvailableFlightPlanPage.js.map

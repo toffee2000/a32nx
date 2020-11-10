@@ -1,6 +1,7 @@
 class CDUSelectedNavaids {
     static ShowPage(mcdu) {
-        mcdu.clearDisplay()
+        mcdu.clearDisplay();
+        mcdu.page.Current = mcdu.page.SelectedNavaids;
 
         mcdu.setTemplate([
             ["SELECTED NAVAIDS"],
@@ -16,10 +17,10 @@ class CDUSelectedNavaids {
             ["DESELECT"],
             ["GPS SELECTED[color]blue"],
             ["DESELECT", "RETURN>"]
-        ])
+        ]);
 
         mcdu.onRightInput[5] = () => {
             CDUDataIndexPage.ShowPage1(mcdu);
-        }
+        };
     }
 }

@@ -1,17 +1,18 @@
 class A320_Neo_CDU_AirwaysFromWaypointPage {
     static ShowPage(mcdu, waypoint, offset = 0, pendingAirway) {
         mcdu.clearDisplay();
-        let rows = [["----"], [""], [""], [""], [""]];
-        let allRows = A320_Neo_CDU_AirwaysFromWaypointPage._GetAllRows(mcdu);
-        let page = (2 + (Math.floor(offset / 4)));
-        let pageCount = (Math.floor(allRows.length / 4) + 2);
-        let rowBottomLabel = [""];
+        mcdu.page.Current = mcdu.page.AirwaysFromWaypointPage;
+        const rows = [["----"], [""], [""], [""], [""]];
+        const subRows = [["VIA", ""], [""], [""], [""], [""]];
+        const allRows = A320_Neo_CDU_AirwaysFromWaypointPage._GetAllRows(mcdu,waypoint);
+        const page = (2 + (Math.floor(offset / 4)));
+        const pageCount = (Math.floor(allRows.length / 4) + 2);
         let rowBottomLine = ["<RETURN"];
         if (mcdu.flightPlanManager.getCurrentFlightPlanIndex() === 1) {
-            rowBottomLabel = ["TMPY[color]red", "TMPY[color]red"];
-            rowBottomLine = ["*ERASE[color]red", "INSERT*[color]red"];
+            rowBottomLine = ["{ERASE[color]red", "INSERT*[color]red"];
             mcdu.onRightInput[5] = async () => {
                 mcdu.insertTemporaryFlightPlan(() => {
+                    mcdu.copyAirwaySelections();
                     CDUFlightPlanPage.ShowPage(mcdu, 0);
                 });
             };
@@ -21,20 +22,25 @@ class A320_Neo_CDU_AirwaysFromWaypointPage {
                 CDUFlightPlanPage.ShowPage(mcdu, 0);
             });
         };
+        allRows.forEach((r, idx) => {
+            if (r[0] != "" && r[1] != "") {
+                subRows[idx] = ["VIA", "TO"];
+            }
+        });
+        mcdu._titleElement.innerHTML = `<span><span>AIRWAYS</span> <span class='s-text'>FROM </span><span class='green'>${waypoint.ident}</span></span>`;
         let showInput = false;
-        let departureWaypoints= mcdu.flightPlanManager.getDepartureWaypoints();
-        let routeWaypoints = mcdu.flightPlanManager.getEnRouteWaypoints();      
-        offset = routeWaypoints.indexOf(waypoint) >= 0 ? routeWaypoints.indexOf(waypoint) + (departureWaypoints.length ? 1 : 0) + 1 : offset;
+        const departureWaypoints = mcdu.flightPlanManager.getDepartureWaypoints();
+        const routeWaypoints = mcdu.flightPlanManager.getEnRouteWaypoints();
         for (let i = 0; i < rows.length; i++) {
             if (allRows[i + offset]) {
                 rows[i] = allRows[i + offset];
-            }
-            else if (!showInput) {
+            } else if (!showInput) {
                 showInput = true;
                 if (!pendingAirway) {
-                    rows[i] = ["[ ][color]blue", "[ ][color]blue"];
+                    subRows[i] = ["VIA", ""];
+                    rows[i] = ["[ ][color]blue", ""];
                     mcdu.onRightInput[i] = async () => {
-                        let value = mcdu.inOut;
+                        const value = mcdu.inOut;
                         if (value.length > 0) {
                             mcdu.clearUserInput();
                             mcdu.insertWaypoint(value, mcdu.flightPlanManager.getEnRouteWaypointsLastIndex() + 1, () => {
@@ -43,81 +49,88 @@ class A320_Neo_CDU_AirwaysFromWaypointPage {
                         }
                     };
                     mcdu.onLeftInput[i] = async () => {
-                        let value = mcdu.inOut;
+                        const value = mcdu.inOut;
                         if (value.length > 0) {
                             mcdu.clearUserInput();
-                            let lastWaypoint = mcdu.flightPlanManager.getWaypoints()[mcdu.flightPlanManager.getEnRouteWaypointsLastIndex()];
-                            if (lastWaypoint.infos instanceof IntersectionInfo) {
-                                let airway = lastWaypoint.infos.airways.find(a => { return a.name === value; });
-                                if (airway) {
-                                    A320_Neo_CDU_AirwaysFromWaypointPage.ShowPage(mcdu, waypoint, offset, airway);
-                                }
-                                else {
-                                    mcdu.showErrorMessage("NOT IN DATABASE");
-                                }
-                            }
-                        }
-                    };
-                }
-                else {
-                    rows[i] = [pendingAirway.name, "[ ][color]blue"];
-                    mcdu.onRightInput[i] = () => {
-                        let value = mcdu.inOut;
-                        if (value.length > 0) {
-                            mcdu.clearUserInput();
-                            mcdu.insertWaypointsAlongAirway(value, mcdu.flightPlanManager.getEnRouteWaypointsLastIndex() + 1, pendingAirway.name, (result) => {
-                                if (result) {
-                                    A320_Neo_CDU_AirwaysFromWaypointPage.ShowPage(mcdu, waypoint, offset);
+                            mcdu.ensureCurrentFlightPlanIsTemporary(() => {
+                                const lastWaypoint = mcdu.flightPlanManager.getWaypoints()[mcdu.flightPlanManager.getEnRouteWaypointsLastIndex()];
+                                if (lastWaypoint.infos instanceof IntersectionInfo || lastWaypoint.infos instanceof VORInfo || lastWaypoint.infos instanceof NDBInfo) {
+                                    const airway = lastWaypoint.infos.airways.find(a => {
+                                        return a.name === value;
+                                    });
+                                    if (airway) {
+                                        A320_Neo_CDU_AirwaysFromWaypointPage.ShowPage(mcdu, waypoint, offset, airway);
+                                    } else {
+                                        mcdu.showErrorMessage("AWY/WPT MISMATCH");
+                                    }
                                 }
                             });
                         }
                     };
-                    if (rows[i + 1]) {
-                        rows[i + 1] = ["-----"];
-                    }
+                } else if (pendingAirway) {
+                    subRows[i] = ["VIA", "TO"];
+                    rows[i] = [`${pendingAirway.name}[color]blue`, "[ ][color]blue"];
+                    mcdu.onRightInput[i] = () => {
+                        const value = mcdu.inOut;
+                        if (value.length > 0) {
+                            mcdu.clearUserInput();
+                            mcdu.ensureCurrentFlightPlanIsTemporary(() => {
+                                mcdu.insertWaypointsAlongAirway(value, mcdu.flightPlanManager.getEnRouteWaypointsLastIndex() + 1, pendingAirway.name, (result) => {
+                                    if (result) {
+                                        A320_Neo_CDU_AirwaysFromWaypointPage.ShowPage(mcdu, waypoint, offset);
+                                    } else {
+                                        mcdu.showErrorMessage("AWY/WPT MISMATCH");
+                                    }
+                                });
+                            });
+                        }
+                    };
                 }
             }
         }
         mcdu.setTemplate([
-            ["AIRWAYS FROM " + waypoint.ident],
-            ["VIA", "TO"],
+            undefined,
+            subRows[0],
             rows[0],
-            [""],
+            subRows[1],
             rows[1],
-            [""],
+            subRows[2],
             rows[2],
-            [""],
+            subRows[3],
             rows[3],
-            [""],
+            subRows[4],
             rows[4],
-            rowBottomLabel,
+            [""],
             rowBottomLine
         ]);
     }
-    static _GetAllRows(fmc) {
-        let allRows = [];
-        let flightPlan = fmc.flightPlanManager;
+    static _GetAllRows(mcdu, currentWP) {
+        const allRows = [];
+        const flightPlan = mcdu.flightPlanManager;
         if (flightPlan) {
-            let departure = flightPlan.getDeparture();
-            if (departure) {
-                let departureWaypoints = flightPlan.getDepartureWaypoints();
-                let lastDepartureWaypoint = departureWaypoints[departureWaypoints.length - 1];
-                if (lastDepartureWaypoint) {
-                    allRows.push([departure.name, lastDepartureWaypoint.ident]);
+            const routeWaypoints = flightPlan.getEnRouteWaypoints();
+            let indexOfWP = 0;
+            routeWaypoints.forEach((wyp, idx) => {
+                if (wyp.ident === currentWP.ident) {
+                    indexOfWP = idx;
                 }
-            }
-            let routeWaypoints = flightPlan.getEnRouteWaypoints();
-            for (let i = 0; i < routeWaypoints.length; i++) {
-                let prev = routeWaypoints[i - 1];
-                let wp = routeWaypoints[i];
-                let next = routeWaypoints[i + 1];
+            });
+            let inx = indexOfWP === -1 ? 1 : indexOfWP + 1;
+            inx = mcdu.flightPlanManager.getDepartureWaypoints().length ? inx - 1 : inx;
+            const lastWaypoint = mcdu.flightPlanManager.getWaypoints()[mcdu.flightPlanManager.getEnRouteWaypointsLastIndex()];
+            for (let i = inx; i < routeWaypoints.length; i++) {
+                const wp = routeWaypoints[i];
                 if (wp) {
-                    let prevAirway = IntersectionInfo.GetCommonAirway(prev, wp);
-                    if (!prevAirway) {
-                        allRows.push(["DIRECT", wp.ident]);
+                    let color = 'green';
+                    if (mcdu.flightPlanManager.getCurrentFlightPlanIndex() === 1) {
+                        color = 'blue';
                     }
-                    else {
-                        allRows.push([prevAirway.name, wp.ident]);
+                    if (wp.infos.airwayIn === undefined) {
+                        // allRows.push(["DIRECT", wp.ident]);
+                    } else {
+                        if (wp.infos.airwayIn !== wp.infos.airwayOut) {
+                            allRows.push([`${wp.infos.airwayIn}[color]${color}`, `${wp.ident}[color]${color}`]);
+                        }
                     }
                 }
             }

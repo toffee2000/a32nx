@@ -5,12 +5,13 @@
 
 class CDUWaypointPage {
     static ShowPage(mcdu) {
-        mcdu.clearDisplay()
+        mcdu.clearDisplay();
+        mcdu.page.Current = mcdu.page.WaypointPage;
 
         mcdu.setTemplate([
             ["WAYPOINT"],
             ["IDENT"],
-            ["□□□□□□□[color]red"],
+            ["_______[color]red"],
             [""],
             [""],
             [""],
@@ -21,15 +22,15 @@ class CDUWaypointPage {
             [""],
             [""],
             [""]
-        ])
+        ]);
 
         mcdu.onLeftInput[0] = () => {
-            let INPUT = mcdu.inOut;
-            mcdu.clearUserInput()
+            const INPUT = mcdu.inOut;
+            mcdu.clearUserInput();
 
-            var selectedWaypoint = mcdu.getOrSelectWaypointByIdent(INPUT, res => {
-                if(res) {
-                    mcdu.clearDisplay()
+            const selectedWaypoint = mcdu.getOrSelectWaypointByIdent(INPUT, res => {
+                if (res) {
+                    mcdu.clearDisplay();
                     mcdu.setTemplate([
                         ["WAYPOINT"],
                         ["IDENT"],
@@ -44,11 +45,11 @@ class CDUWaypointPage {
                         [""],
                         [""],
                         [""]
-                    ])
+                    ]);
                 } else {
                     mcdu.inOut = "INVALID ENTRY";
                 }
-            })
-        }
+            });
+        };
     }
 }
